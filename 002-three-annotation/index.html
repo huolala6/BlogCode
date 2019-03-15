@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+
+	<head>
+		<meta charset="UTF-8">
+		<title>three-annotation</title>
+		<style>
+			body {
+				/* set margin to 0 and overflow to hidden, to go fullscreen */
+				margin: 0;
+				overflow: hidden;
+			}
+		</style>
+	</head>
+
+	<body>
+		<div id="Stats-output">
+
+		</div>
+		<!-- Div which will hold the Output -->
+		<div id="WebGL-output">
+		</div>
+		<canvas id="number" width="64" height="64"></canvas>
+		<script type="text/javascript" src="libs/three.js"></script>
+		<script type="text/javascript" src="libs/stats.min.js"></script>
+		<script type="text/javascript" src="libs/dat.gui.min.js"></script>
+
+		<script type="text/javascript" src="libs/OrbitControls.js"></script>
+		<script src="libs/GLTFLoader.js" type="text/javascript" charset="utf-8"></script>
+		<script src="libs/Tween.min.js" type="text/javascript" charset="utf-8"></script>
+
+		<script type="text/javascript">
+			var scene = new THREE.Scene();
+
+			var camera = new THREE.PerspectiveCamera(45.0, window.innerWidth / window.innerHeight, 1, 10000);
+			camera.position.set(0, 5, 33);
+			//						camera.lookAt(scene.position);
+
+			var renderer = new THREE.WebGLRenderer();
+			renderer.setClearColor(0x000000, 1.0);
+			renderer.setPixelRatio(window.devicePixelRatio);
+			renderer.setSize(window.innerWidth, window.innerHeight);
+			renderer.sortObjects = true;
+
+			renderer.shadowMap.enabled = true;
+			renderer.shadowMap.type = THREE.PCFShadowMap;
+
+			var ambientLight = new THREE.AmbientLight(0xffffff);
+			scene.add(ambientLight);
+
+			var light = new THREE.SpotLight(0xffffff, 1.1);
+			light.position.set(0, 0, 0);
+			light.castShadow = true;
+			scene.add(light);
+
+			//fog
+			scene.background = new THREE.Color(0xa0a0a0);
+			scene.fog = new THREE.Fog(0xa0a0a0, 200, 1000);
+			//light
+			light = new THREE.HemisphereLight(0xffffff, 0x444444);
+			light.position.set(0, 200, 0);
+			scene.add(light);
+			light = new THREE.DirectionalLight(0xffffff);
+			light.position.set(0, 200, 100);
+			light.castShadow = true;
+			light.shadow.camera.top = 180;
+			light.shadow.camera.bottom = -100;
+			light.shadow.camera.left = -120;
+			light.shadow.camera.right = 120;
+			scene.add(light);
+			// ground
+			var mesh = new THREE.Mesh(new THREE.PlaneBufferGeometry(2000, 2000), new THREE.MeshPhongMaterial({
+				color: 0x999999,
+				depthWrite: false
+			}));
+			mesh.rotation.x = -Math.PI / 2;
+			mesh.receiveShadow = true;
+			scene.add(mesh);
+			//grid
+			var grid = new THREE.GridHelper(2000, 20, 0x000000, 0x000000);
+			grid.material.opacity = 0.2;
+			grid.material.transparent = true;
+			scene.add(grid);
+			//Helper
+			scene.add(new THREE.AxesHelper(2000)); //线
+
+			// model
+			var modelgroup = new THREE.Group();
+			var loader = new THREE.GLTFLoader();
+			loader.load('./assets/model/DamagedHelmet/glTF/DamagedHelmet.gltf', function(gltf) {
+				gltf.scene.scale.set(10, 10, 10)
+				modelgroup.add(gltf.scene);
+			}, undefined, function(e) {
+				console.error(e);
+			});
+			scene.add(modelgroup)
+
+			var controls = new THREE.OrbitControls(camera);
+
+			document.getElementById("WebGL-output").appendChild(renderer.domElement);
+			//CubeMap
+			var textureCube = createCubeMap();
+			var shader = THREE.ShaderLib["cube"];
+			shader.uniforms["tCube"].value = textureCube;
+			var material = new THREE.ShaderMaterial({
+				uniforms: shader.uniforms,
+				vertexShader: shader.vertexShader,
+				fragmentShader: shader.fragmentShader,
+				depthWrite: false,
+				side: THREE.BackSide
+			});
+			var geometry = new THREE.BoxGeometry(10000, 10000, 10000);
+			var cubeMesh = new THREE.Mesh(geometry, material);
+			scene.add(cubeMesh);
+
+			function createCubeMap() {
+				var path = "assets/texture/cubemap/";
+				var format = ".jpg";
+				var urls = [
+					path + "posx" + format, path + "negx" + format,
+					path + "posy" + format, path + "negy" + format,
+					path + "posz" + format, path + "negz" + format,
+				];
+
+				var texture = THREE.ImageUtils.loadTextureCube(urls, THREE.CubeReflectionMapping);
+
+				return texture;
+			}
+
+			//添加射线代码
+			var raycasterCubeMesh;
+			var raycaster = new THREE.Raycaster();
+			var mouseVector = new THREE.Vector3();
+			var tags = [];
+			var tagEls = [];
+			var spriteGroup = new THREE.Group();
+			scene.add(spriteGroup);
+			var objects = [];
+			var activePoint;
+
+			document.addEventListener("mousemove", onMouseMove, false);
+			document.addEventListener("mousedown", onMouseDown, false);
+			document.addEventListener("click", tagClick, false);
+			render();
+
+			//当鼠标移动的时候，记录鼠标移动的位置
+			function onMouseMove(event) {
+				mouseVector.x = 2 * (event.clientX / window.innerWidth) - 1;
+				mouseVector.y = -2 * (event.clientY / window.innerHeight) + 1;
+
+				raycaster.setFromCamera(mouseVector.clone(), camera);
+				var intersects = raycaster.intersectObject(modelgroup, true); //检查与射线相交的所有物体及其后代
+
+				if(raycasterCubeMesh) {
+					scene.remove(raycasterCubeMesh);
+				}
+				activePoint = null;
+				if(intersects.length > 0) {
+					var points = [];
+					points.push(new THREE.Vector3(0, 0, 0));
+					points.push(intersects[0].point);
+					//伴随鼠标移动的小红点
+					raycasterCubeMesh = new THREE.Mesh(new THREE.SphereGeometry(1),
+						new THREE.MeshBasicMaterial({
+							color: 0xff0000,
+							transparent: true,
+							opacity: 0.5
+						}));
+					raycasterCubeMesh.position.copy(intersects[0].point);
+					scene.add(raycasterCubeMesh);
+					activePoint = intersects[0].point; //通过射线拾取到的场景坐标
+				}
+			}
+			//点击标记小圆点的时候，设置镜头朝向圆点所在的方向
+			function tagClick(event) {
+				mouseVector.x = 2 * (event.clientX / window.innerWidth) - 1;
+				mouseVector.y = -2 * (event.clientY / window.innerHeight) + 1;
+				raycaster.setFromCamera(mouseVector.clone(), camera);
+
+				var tagIntersects = raycaster.intersectObjects(objects);
+
+				if(tagIntersects.length > 0) {
+					tagIntersects = tagIntersects.sort(function(a, b) {
+						return a.distanceToRay - b.distanceToRay;
+					});
+					var tween = new TWEEN.Tween(camera.position);
+//					console.log('tagIntersects[0]', tagIntersects[0].object.camera_position)
+					let x = tagIntersects[0].object.camera_position.x
+					let y = tagIntersects[0].object.camera_position.y
+					let z = tagIntersects[0].object.camera_position.z
+
+					tween.to({
+						x: x,
+						y: y,
+						z: z
+					}, 500).delay(100).start();
+					camera.lookAt(tagIntersects[0].point);
+//					console.log("tagEls", tagEls)
+				}
+			}
+			//深度克隆
+			function deepClone(obj) {
+				var newObj = obj instanceof Array ? [] : {};
+				for(var i in obj) {
+					newObj[i] = typeof obj[i] == 'object' ?
+						deepClone(obj[i]) : obj[i];
+				}
+				return newObj;
+			}
+
+			//当鼠标右键点击落下的时候，增加标记注释
+			function onMouseDown(event) {
+				if(event.buttons === 2 && activePoint) {
+					//数字小圆球标记
+					const canvas = document.getElementById("number");
+					const ctx = canvas.getContext("2d");
+					const x = 32;
+					const y = 32;
+					const radius = 25;
+					const startAngle = 0;
+					const endAngle = Math.PI * 2;
+
+					ctx.fillStyle = "rgb(0, 0, 0)";
+					ctx.beginPath();
+					ctx.arc(x, y, radius, startAngle, endAngle);
+					ctx.fill();
+
+					ctx.strokeStyle = "rgb(255, 255, 255)";
+					ctx.lineWidth = 3;
+					ctx.beginPath();
+					ctx.arc(x, y, radius, startAngle, endAngle);
+					ctx.stroke();
+
+					ctx.fillStyle = "rgb(255, 255, 255)";
+					ctx.font = "32px sans-serif";
+					ctx.textAlign = "center";
+					ctx.textBaseline = "middle";
+					ctx.fillText(tags.length + 1, x, y);
+					const numberTexture = new THREE.CanvasTexture(
+						document.querySelector("#number")
+					);
+					var tagMesh = new THREE.Sprite(new THREE.SpriteMaterial({
+						map: numberTexture,
+						alphaTest: 0.5,
+						transparent: true,
+						depthTest: false,
+						depthWrite: false
+					}));
+					tagMesh.camera_position = deepClone(camera.position)
+					tagMesh.position.copy(activePoint);
+					spriteGroup.add(tagMesh);
+					objects.push(tagMesh);
+					//绿色小方块
+					var tagElement = document.createElement("div");
+					tagElement.innerHTML = '<input type="text" placeholder="请输入标题" width="80px" />';
+					tagElement.style.position = "absolute";
+
+					tagMesh.updateTag = function() {
+						tagElement.style.display = "block";
+
+						var position = toScreenPosition(tagMesh, camera); //將场景坐标转换为屏幕坐标
+						tagElement.style.left = position.x + "px";
+						tagElement.style.top = position.y + "px";
+
+					}
+					tagMesh.updateTag();
+					document.getElementById("WebGL-output").appendChild(tagElement);
+					tags.push(tagMesh);
+					tagEls.push(tagElement);
+
+				}
+			}
+
+			//将获取地址的3D坐标转换为屏幕上的2D坐标,即投影
+			function toScreenPosition(obj, camera) {
+				var vector = new THREE.Vector3();
+				var widthHalf = 0.5 * window.innerWidth
+				var heightHalf = 0.5 * window.innerHeight;
+
+				obj.updateMatrixWorld();
+				vector.setFromMatrixPosition(obj.matrixWorld);
+				vector.project(camera);
+
+				vector.x = (vector.x * widthHalf) + widthHalf; //将2D坐标（笛卡尔坐标，原点在中间位置），转换为屏幕坐标（原点在左上角）
+				vector.y = -(vector.y * heightHalf) + heightHalf;
+
+				return {
+					x: vector.x,
+					y: vector.y
+				};
+			}
+			//判断一个物体是否在相机的可视区域内
+//			function isOffScreen(obj, camera) {
+//				var frustum = new THREE.Frustum(); //Frustum用来确定相机的可视区域
+//				var cameraViewProjectionMatrix = new THREE.Matrix4();
+//				cameraViewProjectionMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); //获取相机的法线
+//				frustum.setFromMatrix(cameraViewProjectionMatrix); //设置frustum沿着相机法线方向
+//
+//				return !frustum.intersectsObject(obj);
+//			}
+
+			function render() {
+				controls.update();
+				TWEEN.update();
+				tags.forEach(function(tagMesh) {
+					tagMesh.updateTag();
+				});
+				renderer.render(scene, camera);
+				requestAnimationFrame(render);
+			}
+		</script>
+	</body>
+
+</html>
