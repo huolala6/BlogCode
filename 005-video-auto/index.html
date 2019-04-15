@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title></title>
+		<link rel="stylesheet" type="text/css" href="video-js.6.0.css"/>
+		<script src="jquery-3.3.1.min.js" type="text/javascript" charset="utf-8"></script>
+		<script type="text/javascript" src="video.6.0.js" ></script>
+		<style>
+			section{
+				width: 100%;
+				height: 90vh;
+				overflow: hidden;
+			}
+			h1{
+				text-align: center;
+				padding-top: 300px;
+			}
+			.sec1{
+				background: #11DDDD;
+				
+			}
+			.sec2{
+				background: #3F65EE;
+			}
+			.sec3{
+				background: #66A8CC;
+			}
+			.sec4{
+				background: #FFCC66;
+			}
+			.sec6{
+				background: #73859F;
+			}
+			.sec5{
+				
+				position: relative;
+			}
+			/*视频父级都给100%，充满整个区域*/
+			#video {
+				width: 100%;
+				height: 100%;
+			}
+			/*视频插件的样式，这里重写覆盖*/
+			.video-js .vjs-tech{
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: auto;
+				height: auto;
+				min-height: 100%;
+				min-width: 100%;
+				z-index: 1;/*数字越大，层级越高*/	
+			}
+/*视频上的一个膜层，可以根据自己需要添加*/
+			.mask{
+				position: absolute;
+				top: 0;
+				bottom: 0;
+				left: 0;
+				right: 0;
+				z-index: 2;
+				opacity: 0.4;
+				background: #CCCCCC;
+			}
+			label{
+				position: absolute;
+				top: 300px;
+				left: 0;
+				right: 0;
+				z-index: 3;
+				text-align: center;
+			}
+			
+		</style>
+	</head>
+	<body>
+		<section class="sec1"><h1>火辣辣个人前端博客</h1><h1>网址：http://huolalaweb.com</h1></section>
+		<section class="sec2"><h1>视频在下面！</h1></section>
+		<section class="sec3"><h1>不要着急，继续滑</h1></section>
+		<section class="sec4"><<h1>继续。。。。。。</h1></section>
+		<section id="sec5" class="sec5">
+			<div class="mask"></div>
+			<label>
+				<h2>火辣辣个人前端博客</h2>
+				<h2>网址：http://huolalaweb.com</h2>
+			</label>
+			<video id="video" class="video-js vjs-default-skin" loop  preload="none" data-setup="{}">
+				<source src="http://vjs.zencdn.net/v/oceans.mp4" type="video/mp4">
+			</video>
+		</section>
+		<section class="sec6"></section>
+		
+		<script>
+			function playVideo() {
+				var oPlayer = videojs('video');
+//				console.log($(document).scrollTop());
+//可以在控制台打出视屏距离顶部的距离，2700到3600像素分别是视频的区域，当鼠标滑动到此区域时，视频自动播放
+				if(($(document).scrollTop()>2700) && ($(document).scrollTop()<3600)) {
+					oPlayer.play();
+					oPlayer.playbackRate(1.1);//设置视频速度，默认为1，越大速度越快
+				} else {
+					oPlayer.pause();
+				}
+			}
+			playVideo();
+
+			var scrollFunc = function(e) {
+				e = e || window.event;
+				if(e.wheelDelta) { //判断浏览器IE，谷歌滑轮事件               
+					if(e.wheelDelta > 0) { //当滑轮向上滚动时  
+						playVideo();
+					}
+					if(e.wheelDelta < 0) { //当滑轮向下滚动时  
+						playVideo();
+					}
+				} else if(e.detail) { //Firefox滑轮事件  
+					if(e.detail > 0) { //当滑轮向上滚动时  
+						playVideo();
+					}
+					if(e.detail < 0) { //当滑轮向下滚动时  
+						playVideo();
+					}
+				}
+			}
+			//给页面绑定滑轮滚动事件  
+			if(document.addEventListener) { //firefox  
+				document.addEventListener('DOMMouseScroll', scrollFunc, false);
+			}
+			//滚动滑轮触发scrollFunc方法  //ie 谷歌  
+			window.onmousewheel = document.onmousewheel = scrollFunc;
+		</script>
+	</body>
+</html>
