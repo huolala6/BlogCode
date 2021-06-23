@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>播放器</title>
+        <!-- <link href="https://vjs.zencdn.net/7.4.1/video-js.css" rel="stylesheet">
+	    <script src='https://vjs.zencdn.net/7.4.1/video.js'></script>
+	    <script src="https://cdn.bootcdn.net/ajax/libs/videojs-contrib-hls/5.15.0/videojs-contrib-hls.min.js"></script> -->
+        <!-- 导入的videojs是7.0版本以上的，集成VHS协议库，可播放HLS流媒体视频 -->
+        <link href="videolib/css/video-js.min.css" rel="stylesheet" type="text/css">
+        <script src="videolib/js/video.min.js"></script>
+        <!-- 引入的videojs-flash.js插件主要是为播放rtmp视频流-->
+        <script src="videolib/videojs-flash.min.js"></script>
+    </head>
+    <body>
+        <video id='myvideo' width=960 height=540 class="video-js vjs-default-skin" controls>
+            <!-- RTMP直播源地址-->
+            <source src="rtmp://mobliestream.c3tv.com:554/live/goodtv.sdp">   
+            <!-- <source src="rtmp://rtmp01open.ys7.com/openlive/6e063c08a6574605bd50bf4dfb99a3d0.hd">    -->
+        </video>
+        <script> 
+            var player = videojs('myvideo', {}, function(){console.log('videojs播放器初始化成功')})
+            player.play();
+        </script>
+    </body>
+</html>
