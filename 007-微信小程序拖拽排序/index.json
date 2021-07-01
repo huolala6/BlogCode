@@ -1,0 +1,7 @@
+{
+  "usingComponents": {
+  },
+  "navigationBarTitleText": "区域设置",
+  "enablePullDownRefresh":false
+
+}

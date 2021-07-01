@@ -1,0 +1,39 @@
+<!--pages/user/pages/area/index.wxml-->
+<view class="area">
+    <view class="list">
+      <view class="list-item header">
+        <view class="left">
+          <view>区域列表</view>
+        </view>
+        <view class="right" bindtap="handleSet">
+          <view>完成</view>
+        </view>
+      </view>
+      <!-- 克隆 item -->
+      <view id="{{kelong.id}}"  class="list-item kelong"  hidden='{{!showkelong}}' style='top:{{kelong.top}}px'>
+          <view class="left">
+            <!-- <image src="../../../../image/delete.png"></image> -->
+            <view>{{kelong.name}}</view>
+          </view>
+          <view class="right">
+            <image src="{{kelong.nameIcon}}" class="small-icon"></image>
+          </view>
+        </view>
+        <!-- 列表 -->
+      <block wx:for-items="{{list}}" wx:key="id">
+        <view id="{{item.id}}" class="list-item">
+          <view class="left">
+            <image  id="{{item.id}}" bindtap="handleDelete" src="../../../../image/delete.png"></image>
+            <view>{{item.name}}</view>
+          </view>
+          <view class="right" data-index='{{index}}' catchtouchstart='dragStart' catchtouchmove='dragMove' catchtouchend='dragEnd'>
+            <image src="{{item.nameIcon}}" class="small-icon"></image>
+          </view>
+        </view>
+      </block>
+    </view>
+    <view class="footer">
+      Tips：长按<image src="../../../../image/more.png" style="width:30rpx;height:30rpx;"></image>可拖动调整排序；区域删除后设备将移至未分区。
+    </view>
+
+    </view>
